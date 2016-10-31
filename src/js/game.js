@@ -2,6 +2,7 @@ import EventEmitter from 'event-emitter';
 
 class game extends EventEmitter {
   constructor (state){
+    super();
     this.state = Object.assign({
       players: [],
       board: []
