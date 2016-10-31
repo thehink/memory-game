@@ -1,0 +1,33 @@
+{
+  "name": "memory-game",
+  "version": "0.0.1",
+  "description": "A simple memory game with multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thehink/memory-game.git"
+  },
+  "keywords": [
+    "game",
+    "memory",
+    "puzzle",
+    "multiplayer"
+  ],
+  "author": "Benjamin Rizk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thehink/memory-game/issues"
+  },
+  "homepage": "https://github.com/thehink/memory-game#readme",
+  "dependencies": {
+    "express": "^4.14.0"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.17.5",
+    "gulp": "^3.9.1",
+    "gulp-nodemon": "^2.2.1"
+  }
+}
