@@ -1,3 +1,7 @@
+*{
+  box-sizing: border-box;
+}
+
 header {
   background: #343434;
   color: #EEE;
@@ -9,47 +13,82 @@ header h1 {
 }
 
 .content {
-  max-width: 53em;
+  max-width: 55em;
   margin: 0 auto;
+}
+
+.main-wrapper{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 footer {
   border-top: 1px solid #CCC;
   margin-top: 10px;
-  padding-top: 2px;
+  padding: 10px;
   font-size: 0.8em;
   text-align: center;
 }
 
 .game {
   display: flex;
-  padding: 5px;
+  padding: 0.1em;
   border: 1px solid #CCC;
-  margin: 10px 10px;
+  margin: 10px auto;
+  width: 70%;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .game > .card{
-  flex: 0 1 10vw;
-  padding: 5px;
+  flex: 0 1 25%;
+  padding: 0px;
   border: 1px solid #CCC;
-  margin: 0.5em;
-  width: 10vw;
-  height: 10vw;
-  border-radius: 5px;
+  margin: 0em;
+  width: 25%;
+  border-radius: 3px;
   box-shadow: 0px 0px 10px -2px rgba(0,0,0,0.75);
   text-align: center;
 }
 
-.card > i {
-  font-size: 10vw;
-  color: rgba(0,155,155,.8);
+.game > .card:hover{
+  background: #DDD;
+  cursor: pointer;
 }
 
-@media all and (max-width: 800px) {
-  .card {
-    width: 15vw;
-    height: 15vw;
+.card > img{
+  width: 100%;
+}
+
+
+.players{
+  width:25%;
+  margin-top: 10px;
+}
+
+.players > .player{
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #DDD;
+  background: #EEE;
+  margin-right: 10px;
+  height: 4em;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.player > .profile{
+  font-weight: bold;
+  color: green;
+}
+
+@media all and (max-width:  600px) {
+  .game {
+    width: 100%;
+  }
+  .players{
+    width:100%;
+    margin-top: 0px;
   }
 }
