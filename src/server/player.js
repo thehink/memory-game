@@ -5,8 +5,8 @@ class Player{
     this.name = player.name;
     this.color = player.color;
     this.pairs = [];
-    this.totalPoints = [];
-    this.socket = player.socket;
+    this.totalPoints = 0;
+    this.newConnection(player.socket);
   }
 
   isConnected(){
@@ -21,6 +21,27 @@ class Player{
       this.socket.disconnect();
     }
     this.socket = socket;
+
+    this.socket.on('disconnect', this.onDisconnect);
+    this.socket.on('checkCard', this.onCheckCard);
+  }
+
+  onDisconnect(){
+
+  }
+
+  onCheckCard(){
+
+  }
+
+  getInfo(){
+    return {
+      guid: this.guid,
+      name: this.name,
+      color: this.color,
+      pairs: this.pairs,
+      points: this.totalPoints
+    }
   }
 
 }
