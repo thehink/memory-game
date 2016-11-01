@@ -16,7 +16,7 @@ gulp.task('nodemon', function (cb) {
 	return nodemon({
 		script: 'server.dev.js',
     execMap: {
-      js: "babel-node"
+      js: "babel-node --debug"
     },
 		watch: ["src/server/*"]
 	}).on('start', function () {

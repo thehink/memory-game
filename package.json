@@ -6,7 +6,10 @@
   "scripts": {
     "clean": "rimraf dist/*",
     "copy": "copyfiles -f ./src/index.html ./src/favicon.ico ./dist",
-    "dist": "npm run clean & npm run copy & webpack --env=dist",
+    "build:client": "npm run clean & npm run copy & webpack --env=dist",
+    "build:server": "webpack --env=server",
+    "build": "npm run build:client & npm run build:server",
+    "server": "node ./server/server.build",
     "start": "gulp --env=dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -1,8 +1,9 @@
+const fs = require('fs');
 const path = require('path');
 const webpack = require('webpack');
 const args = require('minimist')(process.argv.slice(2));
 
-const allowedEnvs = ['dev', 'dist', 'test'];
+const allowedEnvs = ['dev', 'dist', 'test', 'server'];
 let env;
 if (args._.length > 0 && args._.indexOf('start') !== -1) {
   env = 'test';
@@ -99,6 +100,55 @@ if(env === 'dev'){
     test: /\.(js|jsx)$/,
     loader: 'babel-loader',
     include: path.join(__dirname, 'src')
+  });
+}
+
+if(env === 'server'){
+  const nodeModules = {};
+    fs.readdirSync('node_modules')
+      .filter(function(x) {
+        return ['.bin'].indexOf(x) === -1;
+      })
+      .forEach(function(mod) {
+        nodeModules[mod] = 'commonjs ' + mod;
+      });
+
+
+  Object.assign(config, {
+    target: 'node',
+    output: {
+      path: path.join(__dirname, './server'),
+      filename: 'server.build.js',
+      publicPath: './server/',
+      libraryTarget : 'commonjs'
+    },
+    entry: [
+      './src/server/server'
+    ],
+    cache: false,
+    devtool: 'sourcemap',
+    externals: nodeModules,
+    plugins: [
+      new webpack.IgnorePlugin(/\.(css|less)$/),
+      //new webpack.optimize.DedupePlugin(),
+      new webpack.DefinePlugin({
+        'process.env.NODE_ENV': '"production"'
+      }),
+      //new webpack.optimize.UglifyJsPlugin(),
+      //new webpack.optimize.OccurenceOrderPlugin(),
+      //new webpack.optimize.AggressiveMergingPlugin(),
+      new webpack.NoErrorsPlugin()
+    ]
+  });
+  config.module.loaders.push({
+    test: /\.(js|jsx)$/,
+    loader: 'babel-loader',
+    include: path.join(__dirname, 'src')
+  });
+
+  config.module.loaders.push({
+    test: /\.(json)$/,
+    loader: 'file-loader'
   });
 }
 
