@@ -1,0 +1,42 @@
+[
+  {
+    "name": "duck",
+    "src": "images/duck.png"
+  },
+  {
+    "name": "wheel",
+    "src": "images/wheel.png"
+  },
+  {
+    "name": "key",
+    "src": "images/key.png"
+  },
+  {
+    "name": "camera",
+    "src": "images/camera.png"
+  },
+  {
+    "name": "scream",
+    "src": "images/scream.png"
+  },
+  {
+    "name": "crocodile",
+    "src": "images/crocodile.png"
+  },
+  {
+    "name": "sun",
+    "src": "images/sun.png"
+  },
+  {
+    "name": "gear",
+    "src": "images/gear.png"
+  },
+  {
+    "name": "skull",
+    "src": "images/skull.png"
+  },
+  {
+    "name": "stop",
+    "src": "images/stop.png"
+  }
+]
