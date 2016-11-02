@@ -55,6 +55,7 @@ class App {
       this.socket.on('gameState', state => {this.game.setState(state)});
     });
 
+    game.on('gameFinished', guid => {this.gameFinished(guid)});
     game.on('addPlayer', player => {this.onAddPlayer(player)});
     game.on('removePlayer', guid => {this.onRemovePlayer(guid)});
     game.on('updatePlayer', player => {this.onUpdatePlayer(player)});
@@ -62,6 +63,11 @@ class App {
     game.on('flipCard', (guid, index) => {this.onFlipCard(guid, index)});
     game.on('foundPair', (guid, cards) => {this.onFoundPair(guid, cards)});
     game.on('setState', state => {this.onSetState(state)});
+  }
+
+  gameFinished(guid){
+    const player = this.game.getPlayer(guid);
+    alert('Player ' + player.name + ' won with ' + player.pairs + ' pairs');
   }
 
   setStatus(status) {
@@ -107,22 +113,36 @@ class App {
   }
 
   onNextTurn(guid) {
-    if(this.player.guid === guid){
-      //my turn
-      document.querySelector('.game').classList.add('my-turn');
-    }else{
-      //someone elses turn
-      document.querySelector('.game').classList.remove('my-turn');
+    const playerEl = document.querySelector('.current');
+    if(playerEl){
+      playerEl.classList.remove('current');
     }
-    this.renderBoard(this.game.getState());
+
+    document.querySelector('#player_'+guid).classList.add('current');
+
+    if(this.player.guid === guid){
+      document.querySelector('.game').classList.add('my-turn'); //my turn
+    }else{
+      document.querySelector('.game').classList.remove('my-turn');  //someone elses turn
+    }
+
+    document.querySelectorAll('.flipped').forEach(el => {
+      el.classList.remove('flipped');
+    });
+
+    //todo: remove this and modify html instead of rerender everything
+    //this.renderBoard(this.game.getState());
   }
 
   onSetState(state){
     this.render();
   }
 
-  onFoundPair(cards){
-
+  onFoundPair(guid, cards){
+    cards.forEach(index => {
+      const cardEl = document.querySelector('.game > .card:nth-child(' + (index+1) + ')');
+      cardEl.classList.add('found');
+    });
   }
 
   onUpdatePlayer(player) {
@@ -136,15 +156,21 @@ class App {
 
   onAddPlayer(player) {
     //add player to gui
+    const state = this.game.getState();
+
     const selector = document.querySelector('.players');
-    const playerElement = this.buildPlayerElement(player);
+    const playerElement = this.buildPlayerElement(state, player);
     selector.appendChild(playerElement);
   }
 
-  buildPlayerElement(player){
+  buildPlayerElement(state, player){
     let playerElement = document.createElement('div');
     playerElement.className = 'player';
     playerElement.id = 'player_' + player.guid;
+    console.log('compare', state, state.currentTurn, player.guid);
+    if(state.currentTurn === player.guid){
+      playerElement.classList.add('current');
+    }
 
     let profile = document.createElement('div');
     profile.className = 'profile';
@@ -173,7 +199,7 @@ class App {
     selector.innerHTML = '';
 
     state.players.forEach(player => {
-      let playerElement = this.buildPlayerElement(player);
+      let playerElement = this.buildPlayerElement(state, player);
       selector.appendChild(playerElement);
     });
   }

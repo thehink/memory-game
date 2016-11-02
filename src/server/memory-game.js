@@ -7,7 +7,7 @@ import Game from '../shared/game';
 import asdasd from '../cards.json';
 const Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(asdasd, 'utf8')) : asdasd;
 
-const pairs = 3;
+const pairs = 8;
 
 const getRandomCards = () => {
   Cards.sort((a,b) => {
@@ -37,12 +37,11 @@ const getRandomCards = () => {
 const memoryGame = (io) => {
   const router = express.Router();
   const game = new Game();
+  game.setCards(getRandomCards());
 
   game.on('error', error => {
     console.log('Error', error);
   });
-
-  game.setCards(getRandomCards());
 
   game.on('addPlayer', player => {
     io.emit('addPlayer', player);
@@ -73,45 +72,15 @@ const memoryGame = (io) => {
     //flip card on client
     console.log('FlipCard', {guid: guid, index: card.index});
     io.emit('flipCard', {guid: guid, index: card.index});
-
   });
 
   game.on('wait', text => {
     io.emit('status', text);
   });
 
-  router.get('/images/:image',  (req, res, next) => {
-    res.sendFile(path.join(__dirname, '../images', req.params.image));
+  game.on('gameFinished', player => {
+    console.log('Game finished!');
   });
-
-  let i = 0;
-  setInterval(()=> {
-    io.emit('status', 'Loop ' + i++);
-    if(game.players.length < 2){
-      io.emit('status', 'Not enough players!');
-      return;
-    }
-
-    if(!game.started){
-      game.started = true;
-      io.emit('status', 'Starting new game...');
-      game.setCards(getRandomCards());
-      io.emit('gameState', game.getState());
-      game.nextTurn(game.players[0].guid);
-    }
-
-    let pairsLeft = game.cards.length;
-    game.cards.forEach(card => {
-      if(card.found){
-        pairsLeft--;
-      }
-    })
-    pairsLeft /= 2;
-
-    io.emit('status', 'Pairs left... ' + pairsLeft);
-
-
-  }, 3000);
 
   io.on('connection', function(socket){
     console.log('a user connected');
@@ -123,9 +92,7 @@ const memoryGame = (io) => {
       }
 
       console.log('Player tried to flip card', index);
-
       const player = socket.player;
-
       game.flipCard(player.guid, index);
     });
 
@@ -154,6 +121,7 @@ const memoryGame = (io) => {
             if(existingPlayer.timeout){
               clearTimeout(existingPlayer.timeout);
             }
+            existingPlayer.socket.player = null;
             existingPlayer.socket.disconnect();
             player = existingPlayer;
         }else{
@@ -169,14 +137,52 @@ const memoryGame = (io) => {
       socket.player = player;
       player.socket = socket;
 
-
       socket.emit('authSuccess', player.getInfo());
       socket.emit('gameState', game.getState());
-
       console.log('Auth', name, guid);
     });
 
   });
+
+  /*
+
+  GAME LOOP
+
+  */
+  setInterval(()=> {
+    if(game.players.length < 2){
+      io.emit('status', 'Not enough players!');
+      return;
+    }
+
+    if(!game.started){
+      game.started = true;
+      io.emit('status', 'Starting new game...');
+      game.setCards(getRandomCards());
+      io.emit('gameState', game.getState());
+      game.nextTurn(game.players[0].guid);
+    }
+
+    let pairsLeft = game.cards.length;
+    game.cards.forEach(card => {
+      if(card.found){
+        pairsLeft--;
+      }
+    })
+    pairsLeft /= 2;
+
+    //io.emit('status', 'Pairs left... ' + pairsLeft);
+
+
+  }, 3000);
+
+  /*
+    Serve images for our game
+  */
+  router.get('/images/:image',  (req, res, next) => {
+    res.sendFile(path.join(__dirname, '../images', req.params.image));
+  });
+
   return router;
 }
 

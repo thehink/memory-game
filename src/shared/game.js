@@ -45,6 +45,23 @@ class Game extends EventEmitter{
     });
   }
 
+  getPairsLeft(){
+    let pairsLeft = this.cards.length;
+    this.cards.forEach(card => {
+      if(card.found){
+        pairsLeft--;
+      }
+    })
+    pairsLeft /= 2;
+    return pairsLeft;
+  }
+
+  getLeadingPlayerGuid(){
+    return this.players.concat().sort((a, b) => {
+      return a.pairs < b.pairs;
+    })[0].guid;
+  }
+
   flipCard(guid, index){
     const player = this.getPlayer(guid);
 
@@ -91,14 +108,22 @@ class Game extends EventEmitter{
 
         console.log('FOUND PAIR', this.firstCard, this.secondCard);
 
+        player.pairs++;
+
         this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
+
+        if(this.getPairsLeft() === 0){
+          this.started = false;
+          this.trigger('gameFinished', this.getLeadingPlayerGuid());
+        }
+
         //same player can pick cards again
         this.trigger('flipCard', player.guid, index);
         this.nextTurn(this.currentTurn);
         return;
       }else{
         //wait a bit before we set next player
-        this.trigger('wait', 'Waiting 4 seconds so everyone have time to see the cards!');
+        this.trigger('wait', 'Waiting 3 seconds so everyone have time to see the cards!');
         setTimeout(()=> {
           if(this.players.length > 0){
             const index = this.players.indexOf(player) + 1;
@@ -108,7 +133,7 @@ class Game extends EventEmitter{
             this.started = false;
           }
 
-        }, 4000);
+        }, 3000);
       }
     }
 

@@ -124,6 +124,10 @@ footer {
   justify-content: flex-start;
 }
 
+.players > .player.current{
+  background: rgba(0,255,0,.18);
+}
+
 .player > .profile{
   font-weight: bold;
   color: green;
