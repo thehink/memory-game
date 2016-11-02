@@ -186,7 +186,7 @@
 	    pairsLeft /= 2;
 	
 	    io.emit('status', 'Pairs left... ' + pairsLeft);
-	  }, 1000);
+	  }, 3000);
 	
 	  io.on('connection', function (socket) {
 	    console.log('a user connected');
