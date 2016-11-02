@@ -92,7 +92,7 @@
 /* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(__dirname) {'use strict';
 	
 	var _game = __webpack_require__(6);
 	
@@ -107,6 +107,7 @@
 	var express = __webpack_require__(2);
 	var Guid = __webpack_require__(10);
 	var fs = __webpack_require__(11);
+	var path = __webpack_require__(12);
 	
 	var Cards = typeof _cards2.default === "string" ? JSON.parse(fs.readFileSync(_cards2.default, 'utf8')) : _cards2.default;
 	
@@ -141,6 +142,10 @@
 	  var game = new _game2.default();
 	  game.setCards(getRandomCards());
 	
+	  game.on('error', function (error) {
+	    console.log('Error', error);
+	  });
+	
 	  game.on('addPlayer', function (player) {
 	    io.emit('addPlayer', player);
 	  });
@@ -157,36 +162,28 @@
 	    io.emit('nextTurn', guid);
 	  });
 	
-	  router.get('/api', function (req, res, next) {
-	    console.log('Got APi');
+	  game.on('foundPair', function (guid, cards) {
+	    io.emit('foundPair', { guid: guid, cards: cards });
 	  });
 	
-	  var i = 0;
-	  setInterval(function () {
-	    io.emit('status', 'Loop ' + i++);
-	    if (game.players.length < 2) {
-	      io.emit('status', 'Not enough players!');
-	      return;
-	    }
+	  game.on('flipCard', function (guid, index) {
+	    var card = game.getCard(index);
 	
-	    if (!game.started) {
-	      game.started = true;
-	      io.emit('status', 'Starting new game...');
-	      game.setCards(getRandomCards());
-	      io.emit('gameState', game.getState());
-	      game.nextTurn(game.players[0].guid);
-	    }
+	    //make client aware of card contents
+	    io.emit('updateCard', card);
 	
-	    var pairsLeft = game.cards.length;
-	    game.cards.forEach(function (card) {
-	      if (card.found) {
-	        pairsLeft--;
-	      }
-	    });
-	    pairsLeft /= 2;
+	    //flip card on client
+	    console.log('FlipCard', { guid: guid, index: card.index });
+	    io.emit('flipCard', { guid: guid, index: card.index });
+	  });
 	
-	    io.emit('status', 'Pairs left... ' + pairsLeft);
-	  }, 3000);
+	  game.on('wait', function (text) {
+	    io.emit('status', text);
+	  });
+	
+	  game.on('gameFinished', function (player) {
+	    console.log('Game finished!');
+	  });
 	
 	  io.on('connection', function (socket) {
 	    console.log('a user connected');
@@ -197,9 +194,9 @@
 	        return;
 	      }
 	
+	      console.log('Player tried to flip card', index);
 	      var player = socket.player;
-	
-	      game.flipCard(player, index);
+	      game.flipCard(player.guid, index);
 	    });
 	
 	    socket.on('disconnect', function () {
@@ -229,9 +226,8 @@
 	          if (existingPlayer.timeout) {
 	            clearTimeout(existingPlayer.timeout);
 	          }
-	          if (existingPlayer.socket.connected) {
-	            existingPlayer.socket.disconnect();
-	          }
+	          existingPlayer.socket.player = null;
+	          existingPlayer.socket.disconnect();
 	          player = existingPlayer;
 	        } else {
 	          //socket.emit('game_error', 'Couldnt find player with GUID: ' + guid);
@@ -248,14 +244,51 @@
 	
 	      socket.emit('authSuccess', player.getInfo());
 	      socket.emit('gameState', game.getState());
-	
 	      console.log('Auth', name, guid);
 	    });
 	  });
+	
+	  /*
+	    GAME LOOP
+	    */
+	  setInterval(function () {
+	    if (game.players.length < 2) {
+	      io.emit('status', 'Not enough players!');
+	      return;
+	    }
+	
+	    if (!game.started) {
+	      game.started = true;
+	      io.emit('status', 'Starting new game...');
+	      game.setCards(getRandomCards());
+	      io.emit('gameState', game.getState());
+	      game.nextTurn(game.players[0].guid);
+	    }
+	
+	    var pairsLeft = game.cards.length;
+	    game.cards.forEach(function (card) {
+	      if (card.found) {
+	        pairsLeft--;
+	      }
+	    });
+	    pairsLeft /= 2;
+	
+	    //io.emit('status', 'Pairs left... ' + pairsLeft);
+	
+	  }, 3000);
+	
+	  /*
+	    Serve images for our game
+	  */
+	  router.get('/images/:image', function (req, res, next) {
+	    res.sendFile(path.join(__dirname, '../images', req.params.image));
+	  });
+	
 	  return router;
 	};
 	
 	module.exports = memoryGame;
+	/* WEBPACK VAR INJECTION */}.call(exports, "/"))
 
 /***/ },
 /* 6 */
@@ -330,6 +363,11 @@
 	      this.trigger('updateCard', newCard);
 	    }
 	  }, {
+	    key: 'getCard',
+	    value: function getCard(index) {
+	      return this.cards[index];
+	    }
+	  }, {
 	    key: 'updateCards',
 	    value: function updateCards(cards) {
 	      var _this3 = this;
@@ -339,9 +377,37 @@
 	      });
 	    }
 	  }, {
+	    key: 'getPairsLeft',
+	    value: function getPairsLeft() {
+	      var pairsLeft = this.cards.length;
+	      this.cards.forEach(function (card) {
+	        if (card.found) {
+	          pairsLeft--;
+	        }
+	      });
+	      pairsLeft /= 2;
+	      return pairsLeft;
+	    }
+	  }, {
+	    key: 'getLeadingPlayerGuid',
+	    value: function getLeadingPlayerGuid() {
+	      return this.players.concat().sort(function (a, b) {
+	        return a.pairs < b.pairs;
+	      })[0].guid;
+	    }
+	  }, {
 	    key: 'flipCard',
-	    value: function flipCard(player, index) {
-	      if (this.currentTurn != player.guid) {
+	    value: function flipCard(guid, index) {
+	      var _this4 = this;
+	
+	      var player = this.getPlayer(guid);
+	
+	      if (!player) {
+	        this.trigger('error', 'Player who tried to flip card doesnt exist!');
+	        return;
+	      }
+	
+	      if (this.currentTurn != guid) {
 	        this.trigger('error', 'player tried to flip card without it being their turn!');
 	        return;
 	      }
@@ -353,32 +419,61 @@
 	        return;
 	      }
 	
-	      if (this.firstCard && this.secondCard) {
+	      if (this.firstCard !== null && this.secondCard !== null) {
 	        this.trigger('error', 'This player already picked 2 cards!');
 	        return;
 	      }
 	
-	      if (!this.firstCard) {
-	        this.firstCard = card;
-	      } else if (this.firstCard) {
-	        this.secondCard = card;
+	      if (this.firstCard === null) {
+	        this.firstCard = card.index;
+	        card.flipped = true;
+	      } else if (this.secondCard === null) {
+	        this.secondCard = card.index;
+	        card.flipped = true;
 	      }
 	
-	      if (this.firstCard && this.secondCard) {
-	        if (this.firstCard.name === this.secondCard.name) {
+	      console.log('FlipCard', this.firstCard, this.secondCard);
+	
+	      if (this.firstCard !== null && this.secondCard !== null) {
+	        var firstCard = this.getCard(this.firstCard),
+	            secondCard = this.getCard(this.secondCard);
+	
+	        if (firstCard.name && firstCard.name === secondCard.name) {
 	          //player scored
-	          this.firstCard.found = true;
-	          this.secondCard.found = true;
+	          firstCard.found = true;
+	          secondCard.found = true;
 	
-	          this.trigger('foundPair', player, [this.firstCard, this.secondCard]);
+	          console.log('FOUND PAIR', this.firstCard, this.secondCard);
+	
+	          player.pairs++;
+	
+	          this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
+	
+	          if (this.getPairsLeft() === 0) {
+	            this.started = false;
+	            this.trigger('gameFinished', this.getLeadingPlayerGuid());
+	          }
+	
+	          //same player can pick cards again
+	          this.trigger('flipCard', player.guid, index);
+	          this.nextTurn(this.currentTurn);
+	          return;
+	        } else {
+	          //wait a bit before we set next player
+	          this.trigger('wait', 'Waiting 3 seconds so everyone have time to see the cards!');
+	          setTimeout(function () {
+	            if (_this4.players.length > 0) {
+	              var _index = _this4.players.indexOf(player) + 1;
+	              var nextPlayer = _this4.players[_index % _this4.players.length];
+	              _this4.nextTurn(nextPlayer.guid);
+	            } else {
+	              _this4.started = false;
+	            }
+	          }, 3000);
 	        }
-	
-	        var _index = this.players.indexOf(player) + 1;
-	        var nextPlayer = this.players[_index % this.players.length];
-	        this.nextTurn(nextPlayer.guid);
 	      }
 	
-	      this.trigger('flipCard', card);
+	      this.trigger('flipCard', player.guid, index);
 	    }
 	  }, {
 	    key: 'addPlayer',
@@ -399,7 +494,13 @@
 	      this.players.splice(playerIndex, 1);
 	
 	      if (player && this.currentTurn === player.guid) {
-	        this.nextTurn(this.players[(playerIndex + 1) % this.players.length]);
+	        console.log('New turn player index', playerIndex, this.players.length, (parseInt(playerIndex) + 1) % this.players.length);
+	        if (this.players.length > 0) {
+	          var nextGuid = this.players[(playerIndex + 1) % this.players.length].guid;
+	          this.nextTurn(nextGuid);
+	        } else {
+	          this.started = false;
+	        }
 	      }
 	
 	      this.trigger('removePlayer', guid);
@@ -417,6 +518,24 @@
 	  }, {
 	    key: 'nextTurn',
 	    value: function nextTurn(guid) {
+	      //unflip cards whos pair are not found yet
+	      console.log('New TURN', this.firstCard, this.secondCard);
+	      if (this.firstCard !== null && !this.getCard(this.firstCard).found) {
+	        this.updateCard({
+	          index: this.firstCard,
+	          flipped: false
+	        });
+	      }
+	
+	      if (this.secondCard !== null && !this.getCard(this.secondCard).found) {
+	        this.updateCard({
+	          index: this.secondCard,
+	          flipped: false
+	        });
+	      }
+	
+	      this.firstCard = null;
+	      this.secondCard = null;
 	      console.log('Next Turn', guid);
 	      this.currentTurn = guid;
 	      this.trigger('nextTurn', guid);
@@ -425,6 +544,8 @@
 	    key: 'getState',
 	    value: function getState() {
 	      return {
+	        firstCard: this.firstCard,
+	        secondCard: this.secondCard,
 	        currentTurn: this.currentTurn,
 	        players: this.players.map(function (player) {
 	          return player.getInfo();
@@ -434,7 +555,8 @@
 	            index: i,
 	            name: card.flipped ? card.name : null,
 	            flipped: card.flipped,
-	            found: card.found
+	            found: card.found,
+	            src: card.flipped ? card.src : ''
 	          };
 	        })
 	      };
@@ -442,6 +564,8 @@
 	  }, {
 	    key: 'setState',
 	    value: function setState(state) {
+	      this.firstCard = state.firstCard;
+	      this.secondCard = state.secondCard;
 	      this.currentTurn = state.currentTurn;
 	
 	      this.players = state.players.map(function (player) {
@@ -527,6 +651,12 @@
 /***/ function(module, exports) {
 
 	module.exports = require("fs");
+
+/***/ },
+/* 12 */
+/***/ function(module, exports) {
+
+	module.exports = require("path");
 
 /***/ }
 /******/ ])));
