@@ -1,12 +1,13 @@
 const express = require('express');
 const Guid = require('guid');
 const fs = require('fs');
+const path = require('path');
 
 import Game from '../shared/game';
 import asdasd from '../cards.json';
 const Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(asdasd, 'utf8')) : asdasd;
 
-const pairs = 8;
+const pairs = 3;
 
 const getRandomCards = () => {
   Cards.sort((a,b) => {
@@ -36,6 +37,11 @@ const getRandomCards = () => {
 const memoryGame = (io) => {
   const router = express.Router();
   const game = new Game();
+
+  game.on('error', error => {
+    console.log('Error', error);
+  });
+
   game.setCards(getRandomCards());
 
   game.on('addPlayer', player => {
@@ -54,8 +60,28 @@ const memoryGame = (io) => {
     io.emit('nextTurn', guid);
   });
 
-  router.get('/api',  (req, res, next) => {
-    console.log('Got APi');
+  game.on('foundPair', (guid, cards) => {
+    io.emit('foundPair', {guid:guid, cards:cards});
+  });
+
+  game.on('flipCard', (guid, index) => {
+    const card = game.getCard(index);
+
+    //make client aware of card contents
+    io.emit('updateCard', card);
+
+    //flip card on client
+    console.log('FlipCard', {guid: guid, index: card.index});
+    io.emit('flipCard', {guid: guid, index: card.index});
+
+  });
+
+  game.on('wait', text => {
+    io.emit('status', text);
+  });
+
+  router.get('/images/:image',  (req, res, next) => {
+    res.sendFile(path.join(__dirname, '../images', req.params.image));
   });
 
   let i = 0;
@@ -85,7 +111,7 @@ const memoryGame = (io) => {
     io.emit('status', 'Pairs left... ' + pairsLeft);
 
 
-  }, 1000);
+  }, 3000);
 
   io.on('connection', function(socket){
     console.log('a user connected');
@@ -96,9 +122,11 @@ const memoryGame = (io) => {
         return;
       }
 
+      console.log('Player tried to flip card', index);
+
       const player = socket.player;
 
-      game.flipCard(player, index);
+      game.flipCard(player.guid, index);
     });
 
     socket.on('disconnect', () => {
@@ -126,9 +154,7 @@ const memoryGame = (io) => {
             if(existingPlayer.timeout){
               clearTimeout(existingPlayer.timeout);
             }
-            if(existingPlayer.socket.connected){
-              existingPlayer.socket.disconnect();
-            }
+            existingPlayer.socket.disconnect();
             player = existingPlayer;
         }else{
           //socket.emit('game_error', 'Couldnt find player with GUID: ' + guid);

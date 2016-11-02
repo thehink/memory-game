@@ -66,6 +66,11 @@ footer {
   cursor: pointer;
 }
 
+.game.my-turn > .card.found:hover{
+  background: #DDD;
+  cursor: default;
+}
+
 .card > div{
   position: absolute;
   display: block;
@@ -79,7 +84,7 @@ footer {
 }
 
 .card > .back{
-  background-color: #333;
+  background-color: #CCC;
 }
 
 .front {
@@ -95,6 +100,10 @@ footer {
 
 
 .card.flipped {
+	transform: rotateY(180deg);
+}
+
+.card.found {
 	transform: rotateY(180deg);
 }
 

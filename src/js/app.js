@@ -4,6 +4,7 @@ import '../css/style.css';
 import Image from '../images/question-mark12.png';
 import socket from 'socket.io-client/socket.io';
 
+
 import Game from '../shared/game';
 
 const WebBrowser = (() => {
@@ -43,12 +44,14 @@ class App {
       this.socket.on('error', error => {this.onError(error)});
       this.socket.on('game_error', error => {this.onGameError(error)});
       this.socket.on('authSuccess', player => {this.onAuthorized(player)});
+
       this.socket.on('addPlayer', player => {this.game.addPlayer(player)});
       this.socket.on('removePlayer', player => {this.game.removePlayer(player)});
       this.socket.on('updatePlayer', player => {this.game.updatePlayer(player)});
       this.socket.on('nextTurn', guid => {this.game.nextTurn(guid)});
       this.socket.on('updateCard', card => {this.game.updateCard(card)});
-      this.socket.on('foundPair', cards => {this.game.updateCards(cards)});
+      this.socket.on('flipCard', cardData => {this.game.flipCard(cardData.guid, cardData.index)});
+      //this.socket.on('foundPair', cards => {this.game.updateCards(cards)});
       this.socket.on('gameState', state => {this.game.setState(state)});
     });
 
@@ -56,7 +59,8 @@ class App {
     game.on('removePlayer', guid => {this.onRemovePlayer(guid)});
     game.on('updatePlayer', player => {this.onUpdatePlayer(player)});
     game.on('nextTurn', guid => {this.onNextTurn(guid)});
-    game.on('updateCard', card => {this.onUpdateCard(card)});
+    game.on('flipCard', (guid, index) => {this.onFlipCard(guid, index)});
+    game.on('foundPair', (guid, cards) => {this.onFoundPair(guid, cards)});
     game.on('setState', state => {this.onSetState(state)});
   }
 
@@ -70,22 +74,31 @@ class App {
   }
 
   onGameError(error){
+    console.log('Game_ERROR', error);
     this.setStatus(error);
   }
 
   onCardClicked(cardElement, card){
     if(this.game.currentTurn === this.player.guid && !card.flipped){
-      cardElement.classList.add('flipped');
+      console.log('PickedCard', this.game, card);
+      if(this.game.firstCard !== null){
+        document.querySelector('.game').classList.remove('my-turn');
+      }
       this.socket.emit('flipCard', card.index);
     }
-
   }
 
-  onUpdateCard(card){
+  onFlipCard(guid, index){
     //get card by id && and flip card
     //cardElement.classList.add('flipped');
-    console.log('UpdateCARD', card);
-    this.renderBoard(); //rerender whole board. Should just toggle classes in the future
+    const card = this.game.getCard(index);
+    console.log('OnFlipCard', index);
+    const cardEl = document.querySelector('.game > .card:nth-child(' + (index+1) + ')');
+    cardEl.classList.add('flipped');
+
+    cardEl.querySelector('.back').style.backgroundImage = 'url(' + card.src + ')';
+
+    //this.renderBoard(this.game.getState()); //rerender whole board. Should just toggle classes in the future
   }
 
   onAuthorized(player){
@@ -101,13 +114,14 @@ class App {
       //someone elses turn
       document.querySelector('.game').classList.remove('my-turn');
     }
+    this.renderBoard(this.game.getState());
   }
 
   onSetState(state){
     this.render();
   }
 
-  onFoundPair(pair){
+  onFoundPair(cards){
 
   }
 
@@ -210,7 +224,6 @@ class App {
 
   render() {
     const state = this.game.getState();
-    console.log(state);
 
     this.renderBoard(state);
     this.renderPlayers(state);
