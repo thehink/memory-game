@@ -109,7 +109,7 @@
 	var fs = __webpack_require__(11);
 	var path = __webpack_require__(12);
 	
-	var Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(_cards2.default, 'utf8')) : _cards2.default;
+	var Cards = typeof _cards2.default === "string" ? JSON.parse(fs.readFileSync(_cards2.default, 'utf8')) : _cards2.default;
 	
 	var pairs = 8;
 	
