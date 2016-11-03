@@ -4,7 +4,7 @@ class Player{
     this.guid = player.guid;
     this.name = player.name;
     this.color = player.color;
-    this.pairs = 0;
+    this.pairs = player.pairs || 0;
     this.totalPoints = 0;
   }
 
