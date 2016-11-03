@@ -5,7 +5,7 @@ const path = require('path');
 
 import Game from '../shared/game';
 import CardsJSON from '../cards.json';
-const Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(CardsJSON, 'utf8')) : CardsJSON;
+const Cards = typeof CardsJSON === "string" ? JSON.parse(fs.readFileSync(CardsJSON, 'utf8')) : CardsJSON;
 
 const pairs = 8;
 
