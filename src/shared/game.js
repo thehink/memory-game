@@ -82,6 +82,16 @@ class Game extends EventEmitter{
       return;
     }
 
+    if(card.flipped){
+      this.trigger('error', 'player tried to flip card thats already flipped!');
+      return;
+    }
+
+    if(card.found){
+      this.trigger('error', 'player tried to flip card thats already found!');
+      return;
+    }
+
     if(this.firstCard !== null && this.secondCard !== null){
       this.trigger('error', 'This player already picked 2 cards!');
       return;
