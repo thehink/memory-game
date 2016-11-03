@@ -31,11 +31,7 @@ class Game extends EventEmitter{
     this.firstCard = null;
     this.secondCard = null;
 
-    if(this.nextTurnInterval){
-      console.log('Removing interval!');
-      clearInterval(this.nextTurnInterval);
-      this.nextTurnInterval = null;
-    }
+    this.stopTurnTimeoutInterval();
 
     if(this.pickNextPlayerTimeout){
       clearTimeout(this.pickNextPlayerTimeout);
@@ -157,7 +153,9 @@ class Game extends EventEmitter{
         this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
 
         if(this.getPairsLeft() === 0){
+          this.stopTurnTimeoutInterval();
           this.started = false;
+          this.trigger('status', 'Game completed!');
           this.trigger('gameFinished', this.getLeadingPlayerGuid());
         }
 
@@ -167,10 +165,7 @@ class Game extends EventEmitter{
         return;
       }else{
         //wait a bit before we set next player
-        if(this.nextTurnInterval){
-          clearInterval(this.nextTurnInterval);
-          this.nextTurnInterval = null;
-        }
+        this.stopTurnTimeoutInterval();
         this.trigger('status', 'Checkout the cards and remember them!');
         this.pickNextPlayerTimeout = setTimeout(() => this.pickNextPlayer(), 3000);
       }
@@ -223,6 +218,15 @@ class Game extends EventEmitter{
     }
   }
 
+  stopTurnTimeoutInterval(){
+    if(this.nextTurnInterval){
+      clearInterval(this.nextTurnInterval);
+      this.nextTurnInterval = null;
+    }
+  }
+
+
+//todo: make this a timeout and create the timer on client instead
   nextTurnTimeout(){
     if(!this.started){
       //should not do anything if theres no game going on!
@@ -233,8 +237,7 @@ class Game extends EventEmitter{
 
     if(this.nextTurnInterval){
       console.log('This interval should not exist!!!');
-      clearInterval(this.nextTurnInterval);
-      this.nextTurnInterval = null;
+      this.stopTurnTimeoutInterval();
     }
 
     this.nextTurnInterval = setInterval(()=> {
