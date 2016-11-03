@@ -60,14 +60,18 @@ const memoryGame = (io) => {
   });
 
   game.on('foundPair', (guid, cards) => {
-    io.emit('foundPair', {guid:guid, cards:cards});
+    //io.emit('foundPair', {guid:guid, cards:cards});
   });
 
   game.on('flipCard', (guid, index) => {
     const card = game.getCard(index);
 
     //make client aware of card contents
-    io.emit('updateCard', card);
+    io.emit('updateCard', {
+      index: card.index,
+      name: card.name,
+      src: card.src
+    });
 
     //flip card on client
     console.log('FlipCard', {guid: guid, index: card.index});
@@ -180,7 +184,9 @@ const memoryGame = (io) => {
     Serve images for our game
   */
   router.get('/images/:image',  (req, res, next) => {
-    res.sendFile(path.join(__dirname, '../images', req.params.image));
+    //console.log(path.resolve(__dirname, '../images'), __dirname, path.join(__dirname, '../images', req.params.image));
+    const images  = path.join(path.dirname(fs.realpathSync(__filename)), '../images');
+    res.sendFile(req.params.image, {root: images});
   });
 
   return router;

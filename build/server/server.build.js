@@ -34,7 +34,7 @@
 /******/ 	__webpack_require__.c = installedModules;
 /******/
 /******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "./server/";
+/******/ 	__webpack_require__.p = "./build/server/";
 /******/
 /******/ 	// Load entry module and return exports
 /******/ 	return __webpack_require__(0);
@@ -60,12 +60,12 @@
 	var server = __webpack_require__(3).Server(app);
 	var io = __webpack_require__(4)(server);
 	
-	app.use(express.static('./dist'));
+	app.use(express.static('./build/client'));
 	
 	app.use(__webpack_require__(5)(io));
 	
 	app.get('/', function (req, res) {
-	    res.sendfile('./dist/index.html');
+	    res.sendfile('./build/client/index.html');
 	});
 	
 	server.listen(8080);
@@ -92,7 +92,7 @@
 /* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(__dirname) {'use strict';
+	/* WEBPACK VAR INJECTION */(function(__filename) {'use strict';
 	
 	var _game = __webpack_require__(6);
 	
@@ -163,14 +163,18 @@
 	  });
 	
 	  game.on('foundPair', function (guid, cards) {
-	    io.emit('foundPair', { guid: guid, cards: cards });
+	    //io.emit('foundPair', {guid:guid, cards:cards});
 	  });
 	
 	  game.on('flipCard', function (guid, index) {
 	    var card = game.getCard(index);
 	
 	    //make client aware of card contents
-	    io.emit('updateCard', card);
+	    io.emit('updateCard', {
+	      index: card.index,
+	      name: card.name,
+	      src: card.src
+	    });
 	
 	    //flip card on client
 	    console.log('FlipCard', { guid: guid, index: card.index });
@@ -281,14 +285,16 @@
 	    Serve images for our game
 	  */
 	  router.get('/images/:image', function (req, res, next) {
-	    res.sendFile(path.join(__dirname, '../images', req.params.image));
+	    //console.log(path.resolve(__dirname, '../images'), __dirname, path.join(__dirname, '../images', req.params.image));
+	    var images = path.join(path.dirname(fs.realpathSync(__filename)), '../images');
+	    res.sendFile(req.params.image, { root: images });
 	  });
 	
 	  return router;
 	};
 	
 	module.exports = memoryGame;
-	/* WEBPACK VAR INJECTION */}.call(exports, "/"))
+	/* WEBPACK VAR INJECTION */}.call(exports, "src\\server\\memory-game.js"))
 
 /***/ },
 /* 6 */
@@ -416,6 +422,16 @@
 	
 	      if (!card) {
 	        this.trigger('error', 'Card doesnt exist!');
+	        return;
+	      }
+	
+	      if (card.flipped) {
+	        this.trigger('error', 'player tried to flip card thats already flipped!');
+	        return;
+	      }
+	
+	      if (card.found) {
+	        this.trigger('error', 'player tried to flip card thats already found!');
 	        return;
 	      }
 	
@@ -612,7 +628,7 @@
 	    this.guid = player.guid;
 	    this.name = player.name;
 	    this.color = player.color;
-	    this.pairs = 0;
+	    this.pairs = player.pairs || 0;
 	    this.totalPoints = 0;
 	  }
 	

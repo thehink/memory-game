@@ -22,7 +22,7 @@ let config = {
     './src/index'
   ],
   output: {
-    path: path.join(__dirname, './dist/assets'),
+    path: path.join(__dirname, './build/client/assets'),
     filename: 'app.js',
     publicPath: '/assets/'
   },
@@ -116,10 +116,14 @@ if(env === 'server'){
 
   Object.assign(config, {
     target: 'node',
+    context: __dirname,
+    node: {
+      __filename: true
+    },
     output: {
-      path: path.join(__dirname, './server'),
+      path: path.join(__dirname, './build/server'),
       filename: 'server.build.js',
-      publicPath: './server/',
+      publicPath: './build/server/',
       libraryTarget : 'commonjs'
     },
     entry: [
