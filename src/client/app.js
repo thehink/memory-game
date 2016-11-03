@@ -168,6 +168,8 @@ class App {
     const cardEls = document.querySelectorAll('.flipped');
     for (let cardEl of cardEls) {
       cardEl.classList.remove('flipped');
+      //reset background image to prevent cheating by inspecting html source
+      cardEl.querySelector('.back').style.backgroundImage = '';
     }
 
     //todo: remove this and modify html instead of rerender everything
