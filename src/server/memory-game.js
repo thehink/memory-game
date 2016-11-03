@@ -4,8 +4,8 @@ const fs = require('fs');
 const path = require('path');
 
 import Game from '../shared/game';
-import asdasd from '../cards.json';
-const Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(asdasd, 'utf8')) : asdasd;
+import CardsJSON from '../cards.json';
+const Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(CardsJSON, 'utf8')) : CardsJSON;
 
 const pairs = 8;
 
@@ -33,36 +33,38 @@ const getRandomCards = () => {
   return cardsToUse;
 }
 
+const tryStartGame = (game) => {
+  let startGameInterval = setInterval(()=> {
+      console.log('Trying to start a new game...');
+
+      if(game.players.length < 1){
+        console.log('error', 'Minimum of 1 players needed to start a game!');
+        return;
+      }
+
+      game.newGame();
+      console.log('Game started!');
+      clearTimeout(startGameInterval);
+      startGameInterval = null;
+
+
+  }, 2000);
+}
+
 
 const memoryGame = (io) => {
   const router = express.Router();
   const game = new Game();
   game.setCards(getRandomCards());
 
-  game.on('error', error => {
-    console.log('Error', error);
-  });
-
-  game.on('addPlayer', player => {
-    io.emit('addPlayer', player);
-  });
-
-  game.on('removePlayer', guid => {
-    io.emit('removePlayer', guid);
-  });
-
-  game.on('updatePlayer', player => {
-    io.emit('updatePlayer', player);
-  });
-
-  game.on('nextTurn', guid => {
-    io.emit('nextTurn', guid);
-  });
-
-  game.on('foundPair', (guid, cards) => {
-    //io.emit('foundPair', {guid:guid, cards:cards});
-  });
-
+  //game.on('status', status => console.log('GAME_STATUS', status));
+  game.on('error', error => console.log('GAME_ERROR', error));
+  game.on('addPlayer', player => io.emit('addPlayer', player));
+  game.on('removePlayer', guid => io.emit('removePlayer', guid));
+  game.on('updatePlayer', player => io.emit('updatePlayer', player));
+  game.on('newGame', () => io.emit('newGame'));
+  game.on('resetGame', () => io.emit('resetGame'));
+  game.on('setCards', () => io.emit('setCards', game.getState().cards));
   game.on('flipCard', (guid, index) => {
     const card = game.getCard(index);
 
@@ -78,17 +80,17 @@ const memoryGame = (io) => {
     io.emit('flipCard', {guid: guid, index: card.index});
   });
 
-  game.on('wait', text => {
-    io.emit('status', text);
-  });
+  //game.on('wait', text => io.emit('status', text));
 
   game.on('gameFinished', player => {
     console.log('Game finished!');
+    //io.emit('status', 'Game finished, will try to start a new game in 10 seconds');
+    //setTimeout(() => tryStartGame(game), 1000*10);
   });
 
   io.on('connection', function(socket){
     console.log('a user connected');
-    socket.emit('status', 'Connected...');
+    socket.emit('status', 'Connected!');
 
     socket.on('flipCard', index => {
       if(!socket.player){
@@ -98,6 +100,17 @@ const memoryGame = (io) => {
       console.log('Player tried to flip card', index);
       const player = socket.player;
       game.flipCard(player.guid, index);
+    });
+
+    socket.on('requestNewGame', (cardsSearchString) => {
+      console.log('Got New Game request');
+      game.setCards(getRandomCards());
+      game.newGame();
+    });
+
+    socket.on('requestResetGame', () => {
+      console.log('Got Reset Game request');
+      game.resetGame();
     });
 
     socket.on('disconnect', () => {
@@ -148,37 +161,8 @@ const memoryGame = (io) => {
 
   });
 
-  /*
-
-  GAME LOOP
-
-  */
-  setInterval(()=> {
-    if(game.players.length < 2){
-      io.emit('status', 'Not enough players!');
-      return;
-    }
-
-    if(!game.started){
-      game.started = true;
-      io.emit('status', 'Starting new game...');
-      game.setCards(getRandomCards());
-      io.emit('gameState', game.getState());
-      game.nextTurn(game.players[0].guid);
-    }
-
-    let pairsLeft = game.cards.length;
-    game.cards.forEach(card => {
-      if(card.found){
-        pairsLeft--;
-      }
-    })
-    pairsLeft /= 2;
-
-    //io.emit('status', 'Pairs left... ' + pairsLeft);
-
-
-  }, 3000);
+  //will loop until conditions for game is right and is started
+  //tryStartGame(game);
 
   /*
     Serve images for our game

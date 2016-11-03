@@ -12,6 +12,40 @@ class Game extends EventEmitter{
     this.secondCard = null;
   }
 
+  newGame() {
+    this.resetGame();
+    this.started = true;
+    this.trigger('newGame');
+    this.pickNextPlayer();
+  }
+
+  resetGame() {
+    this.players.forEach(player => player.pairs = 0);
+    this.cards.forEach(card => {
+      card.found = false;
+      card.flipped = false;
+    });
+
+    this.started = false;
+    this.currentTurn = null;
+    this.firstCard = null;
+    this.secondCard = null;
+
+    if(this.nextTurnInterval){
+      console.log('Removing interval!');
+      clearInterval(this.nextTurnInterval);
+      this.nextTurnInterval = null;
+    }
+
+    if(this.pickNextPlayerTimeout){
+      clearTimeout(this.pickNextPlayerTimeout);
+      this.pickNextPlayerTimeout = null;
+    }
+
+    this.trigger('status', 'Game Reset!');
+    this.trigger('resetGame');
+  }
+
   setCards(cards) {
     this.cards = [];
     cards.forEach((card, i) => {
@@ -23,7 +57,7 @@ class Game extends EventEmitter{
         found: card.found
       });
     });
-    this.trigger('setCards');
+    this.trigger('setCards', cards);
   }
 
   updateCard(newCard){
@@ -133,17 +167,12 @@ class Game extends EventEmitter{
         return;
       }else{
         //wait a bit before we set next player
-        this.trigger('wait', 'Waiting 3 seconds so everyone have time to see the cards!');
-        setTimeout(()=> {
-          if(this.players.length > 0){
-            const index = this.players.indexOf(player) + 1;
-            const nextPlayer = this.players[index % this.players.length];
-            this.nextTurn(nextPlayer.guid);
-          }else{
-            this.started = false;
-          }
-
-        }, 3000);
+        if(this.nextTurnInterval){
+          clearInterval(this.nextTurnInterval);
+          this.nextTurnInterval = null;
+        }
+        this.trigger('status', 'Checkout the cards and remember them!');
+        this.pickNextPlayerTimeout = setTimeout(() => this.pickNextPlayer(), 3000);
       }
     }
 
@@ -164,7 +193,6 @@ class Game extends EventEmitter{
     this.players.splice(playerIndex, 1);
 
     if(player && this.currentTurn === player.guid){
-      console.log('New turn player index', playerIndex, this.players.length, ((parseInt(playerIndex)+1) % this.players.length));
       if(this.players.length > 0){
         let nextGuid = this.players[(playerIndex+1) % this.players.length].guid;
         this.nextTurn(nextGuid);
@@ -184,9 +212,48 @@ class Game extends EventEmitter{
     return this.players.find(player => {return player.guid === guid});
   }
 
+  pickNextPlayer(){
+    const player = this.getPlayer(this.currentTurn);
+    if(this.players.length > 0){
+      const index = this.players.indexOf(player) + 1;
+      const nextPlayer = this.players[index % this.players.length];
+      this.nextTurn(nextPlayer.guid);
+    }else{
+      this.started = false;
+    }
+  }
+
+  nextTurnTimeout(){
+    if(!this.started){
+      //should not do anything if theres no game going on!
+      return;
+    }
+
+    this.nextTurnSecondsLeft = this.nextTurnSecondsLeft || Date.now() + 1000*30;
+
+    if(this.nextTurnInterval){
+      console.log('This interval should not exist!!!');
+      clearInterval(this.nextTurnInterval);
+      this.nextTurnInterval = null;
+    }
+
+    this.nextTurnInterval = setInterval(()=> {
+
+      let secondsLeft = (this.nextTurnSecondsLeft - Date.now())/1000;
+
+      this.trigger('status', 'Player got ' + Math.round( secondsLeft * 10 ) / 10 + ' seconds to pick 2 cards!');
+      if(secondsLeft <= 0){
+        clearInterval(this.nextTurnInterval);
+        this.nextTurnInterval = null;
+        this.pickNextPlayer();
+      }
+
+
+    }, 100*1);
+  }
+
   nextTurn(guid) {
     //unflip cards whos pair are not found yet
-    console.log('New TURN', this.firstCard, this.secondCard);
     if(this.firstCard !== null && !this.getCard(this.firstCard).found){
       this.updateCard({
         index: this.firstCard,
@@ -203,14 +270,17 @@ class Game extends EventEmitter{
 
     this.firstCard = null;
     this.secondCard = null;
-    console.log('Next Turn', guid);
     this.currentTurn = guid;
     this.trigger('nextTurn', guid);
+    this.nextTurnSecondsLeft = Date.now() + 1000*30;
+    this.nextTurnTimeout();
   }
 
 
   getState() {
     return {
+      started: this.started,
+      nextTurnSecondsLeft: this.nextTurnSecondsLeft,
       firstCard: this.firstCard,
       secondCard: this.secondCard,
       currentTurn: this.currentTurn,
@@ -228,6 +298,8 @@ class Game extends EventEmitter{
   }
 
   setState(state) {
+    this.started = state.started;
+    this.nextTurnSecondsLeft = state.nextTurnSecondsLeft;
     this.firstCard = state.firstCard;
     this.secondCard = state.secondCard;
     this.currentTurn = state.currentTurn;
@@ -239,7 +311,7 @@ class Game extends EventEmitter{
     this.cards = state.cards.map(card => {
       return card;
     });
-
+    this.nextTurnTimeout();
     this.trigger('setState', state);
   }
 

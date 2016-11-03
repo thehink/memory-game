@@ -50,15 +50,18 @@ class App {
       this.socket.on('addPlayer', player => this.game.addPlayer(player));
       this.socket.on('removePlayer', player => this.game.removePlayer(player));
       this.socket.on('updatePlayer', player => this.game.updatePlayer(player));
-      this.socket.on('nextTurn', guid => this.game.nextTurn(guid));
+      //this.socket.on('nextTurn', guid => this.game.nextTurn(guid));
       //server will send complete card data when flipping a card
       this.socket.on('updateCard', card => this.game.updateCard(card));
       this.socket.on('flipCard', cardData => this.game.flipCard(cardData.guid, cardData.index));
-      //this.socket.on('foundPair', cards => {this.game.updateCards(cards)});
+      this.socket.on('newGame', () => this.game.newGame());
+      this.socket.on('resetGame', () => this.game.resetGame());
+      this.socket.on('setCards', cards => this.game.setCards(cards));
       this.socket.on('gameState', state => this.game.setState(state));
     });
 
     //Listen to game events and modify gui accordingly
+    game.on('status', status => this.setStatus(status));
     game.on('error', error => this.onGameError(error));
     game.on('gameFinished', guid => this.onGameFinished(guid));
     game.on('addPlayer', player => this.onAddPlayer(player));
@@ -67,13 +70,42 @@ class App {
     game.on('nextTurn', guid => this.onNextTurn(guid));
     game.on('flipCard', (guid, index) => this.onFlipCard(guid, index));
     game.on('foundPair', (guid, cards) => this.onFoundPair(guid, cards));
+
+    game.on('newGame', () => this.onNewGame());
+    game.on('resetGame', () => this.onResetGame());
+
+    game.on('setCards', cards => this.onSetCards(cards));
     game.on('setState', state => this.onSetState(state));
+
+    this.addControlButtonListeners();
+  }
+
+  addControlButtonListeners(){
+    document.querySelector('#start_button').addEventListener('click', e => {
+      console.log('Sending New Game request!');
+      this.socket.emit('requestNewGame');
+    });
+
+    document.querySelector('#reset_button').addEventListener('click', e => {
+      console.log('Sending Reset Game request!');
+      this.socket.emit('requestResetGame');
+    });
   }
 
   onGameFinished(guid){
     //todo: show a leaderboard with all the players
     const player = this.game.getPlayer(guid);
     alert('Player ' + player.name + ' won with ' + player.pairs + ' pairs');
+  }
+
+  onNewGame() {
+    console.log('Starting new game!');
+    this.render();
+  }
+
+  onResetGame() {
+    console.log('Reset game!');
+    this.render();
   }
 
   setStatus(status) {
@@ -93,7 +125,7 @@ class App {
   onCardClicked(cardElement, index){
     const card = this.game.getCard(index);
     if(this.game.currentTurn === this.player.guid && !card.flipped){
-      console.log('PickedCard', this.game, card);
+      //console.log('PickedCard', this.game, card);
       if(this.game.firstCard !== null){
         document.querySelector('.game').classList.remove('my-turn');
       }
@@ -133,16 +165,23 @@ class App {
       document.querySelector('.game').classList.remove('my-turn');  //someone elses turn
     }
 
-    document.querySelectorAll('.flipped').forEach(el => {
-      el.classList.remove('flipped');
-    });
+    const cardEls = document.querySelectorAll('.flipped');
+    for (let cardEl of cardEls) {
+      cardEl.classList.remove('flipped');
+    }
 
     //todo: remove this and modify html instead of rerender everything
     //this.renderBoard(this.game.getState());
   }
 
   onSetState(state){
+    console.log('Got new state, rerender everything!');
     this.render();
+  }
+
+  onSetCards(){
+    const state = this.game.getState();
+    this.renderBoard(state);
   }
 
   onFoundPair(guid, cards){
@@ -178,7 +217,6 @@ class App {
     let playerElement = document.createElement('div');
     playerElement.className = 'player';
     playerElement.id = 'player_' + player.guid;
-    console.log('compare', state, state.currentTurn, player.guid);
     if(state.currentTurn === player.guid){
       playerElement.classList.add('current');
     }

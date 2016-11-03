@@ -8,11 +8,48 @@ header {
 }
 
 header h1 {
+  position: relative;
+  display: block;
   margin: 0;
   padding: 0.5em;
+  float: left;
+}
+
+header ul{
+  float: left;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  margin-top: 17px;
+}
+
+header ul > li{
+  margin-left: 20px;
+  margin-right: 5px;
+  float: left;
+}
+
+header ul > li > button{
+  border: 1px solid #444;
+  background: #EEE;
+  padding: 8px;
+  box-shadow: inset 1px 1px 1px rgba(255,255,255,0.6);
+}
+
+header ul > li > button:hover{
+  background: #CCC;
+  cursor: pointer;
+  box-shadow: inset 1px 1px 0px rgba(0,0,0,0.9);
+}
+
+header span{
+  position: absolute;
+  float: left;
+  margin-top: 26px;
 }
 
 .content {
+  overflow: auto;
   max-width: 55em;
   margin: 0 auto;
 }
@@ -33,21 +70,23 @@ footer {
 }
 
 .game {
-
-  display: flex;
+  position: relative;
+  display: block;
   padding: 0.1em;
   border: 1px solid #CCC;
   margin: 10px auto;
-  width: 70%;
-
+  width: 65%;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .game > .card{
   display: block;
   position: relative;
-  flex: 0 1 25%;
+  float: left;
+  /*flex-grow: 0;
+  flex-shrink: 1;
+  flex-basis: 25%;*/
   padding: 0px;
   border: 1px solid #CCC;
   margin: 0;
@@ -56,7 +95,6 @@ footer {
   border-radius: 3px;
   box-shadow: 0px 0px 10px -2px rgba(0,0,0,0.75);
   text-align: center;
-
   transition: 0.6s;
 	transform-style: preserve-3d;
 }
@@ -78,7 +116,7 @@ footer {
   height: 100%;
   background-size: 100%;
   backface-visibility: hidden;
-	position: absolute;
+  -webkit-backface-visibility: hidden;
 	top: 0;
 	left: 0;
 }
