@@ -109,7 +109,7 @@
 	var fs = __webpack_require__(11);
 	var path = __webpack_require__(12);
 	
-	var Cards = typeof _cards2.default === "string" ? JSON.parse(fs.readFileSync(_cards2.default, 'utf8')) : _cards2.default;
+	var Cards = typeof asdasd === "string" ? JSON.parse(fs.readFileSync(_cards2.default, 'utf8')) : _cards2.default;
 	
 	var pairs = 8;
 	
@@ -137,35 +137,49 @@
 	  return cardsToUse;
 	};
 	
+	var tryStartGame = function tryStartGame(game) {
+	  var startGameInterval = setInterval(function () {
+	    console.log('Trying to start a new game...');
+	
+	    if (game.players.length < 1) {
+	      console.log('error', 'Minimum of 1 players needed to start a game!');
+	      return;
+	    }
+	
+	    game.newGame();
+	    console.log('Game started!');
+	    clearTimeout(startGameInterval);
+	    startGameInterval = null;
+	  }, 2000);
+	};
+	
 	var memoryGame = function memoryGame(io) {
 	  var router = express.Router();
 	  var game = new _game2.default();
 	  game.setCards(getRandomCards());
 	
+	  //game.on('status', status => console.log('GAME_STATUS', status));
 	  game.on('error', function (error) {
-	    console.log('Error', error);
+	    return console.log('GAME_ERROR', error);
 	  });
-	
 	  game.on('addPlayer', function (player) {
-	    io.emit('addPlayer', player);
+	    return io.emit('addPlayer', player);
 	  });
-	
 	  game.on('removePlayer', function (guid) {
-	    io.emit('removePlayer', guid);
+	    return io.emit('removePlayer', guid);
 	  });
-	
 	  game.on('updatePlayer', function (player) {
-	    io.emit('updatePlayer', player);
+	    return io.emit('updatePlayer', player);
 	  });
-	
-	  game.on('nextTurn', function (guid) {
-	    io.emit('nextTurn', guid);
+	  game.on('newGame', function () {
+	    return io.emit('newGame');
 	  });
-	
-	  game.on('foundPair', function (guid, cards) {
-	    //io.emit('foundPair', {guid:guid, cards:cards});
+	  game.on('resetGame', function () {
+	    return io.emit('resetGame');
 	  });
-	
+	  game.on('setCards', function () {
+	    return io.emit('setCards', game.getState().cards);
+	  });
 	  game.on('flipCard', function (guid, index) {
 	    var card = game.getCard(index);
 	
@@ -181,17 +195,17 @@
 	    io.emit('flipCard', { guid: guid, index: card.index });
 	  });
 	
-	  game.on('wait', function (text) {
-	    io.emit('status', text);
-	  });
+	  //game.on('wait', text => io.emit('status', text));
 	
 	  game.on('gameFinished', function (player) {
 	    console.log('Game finished!');
+	    //io.emit('status', 'Game finished, will try to start a new game in 10 seconds');
+	    //setTimeout(() => tryStartGame(game), 1000*10);
 	  });
 	
 	  io.on('connection', function (socket) {
 	    console.log('a user connected');
-	    socket.emit('status', 'Connected...');
+	    socket.emit('status', 'Connected!');
 	
 	    socket.on('flipCard', function (index) {
 	      if (!socket.player) {
@@ -201,6 +215,17 @@
 	      console.log('Player tried to flip card', index);
 	      var player = socket.player;
 	      game.flipCard(player.guid, index);
+	    });
+	
+	    socket.on('requestNewGame', function (cardsSearchString) {
+	      console.log('Got New Game request');
+	      game.setCards(getRandomCards());
+	      game.newGame();
+	    });
+	
+	    socket.on('requestResetGame', function () {
+	      console.log('Got Reset Game request');
+	      game.resetGame();
 	    });
 	
 	    socket.on('disconnect', function () {
@@ -252,34 +277,8 @@
 	    });
 	  });
 	
-	  /*
-	    GAME LOOP
-	    */
-	  setInterval(function () {
-	    if (game.players.length < 2) {
-	      io.emit('status', 'Not enough players!');
-	      return;
-	    }
-	
-	    if (!game.started) {
-	      game.started = true;
-	      io.emit('status', 'Starting new game...');
-	      game.setCards(getRandomCards());
-	      io.emit('gameState', game.getState());
-	      game.nextTurn(game.players[0].guid);
-	    }
-	
-	    var pairsLeft = game.cards.length;
-	    game.cards.forEach(function (card) {
-	      if (card.found) {
-	        pairsLeft--;
-	      }
-	    });
-	    pairsLeft /= 2;
-	
-	    //io.emit('status', 'Pairs left... ' + pairsLeft);
-	
-	  }, 3000);
+	  //will loop until conditions for game is right and is started
+	  //tryStartGame(game);
 	
 	  /*
 	    Serve images for our game
@@ -342,6 +341,44 @@
 	  }
 	
 	  _createClass(Game, [{
+	    key: 'newGame',
+	    value: function newGame() {
+	      this.resetGame();
+	      this.started = true;
+	      this.trigger('newGame');
+	      this.pickNextPlayer();
+	    }
+	  }, {
+	    key: 'resetGame',
+	    value: function resetGame() {
+	      this.players.forEach(function (player) {
+	        return player.pairs = 0;
+	      });
+	      this.cards.forEach(function (card) {
+	        card.found = false;
+	        card.flipped = false;
+	      });
+	
+	      this.started = false;
+	      this.currentTurn = null;
+	      this.firstCard = null;
+	      this.secondCard = null;
+	
+	      if (this.nextTurnInterval) {
+	        console.log('Removing interval!');
+	        clearInterval(this.nextTurnInterval);
+	        this.nextTurnInterval = null;
+	      }
+	
+	      if (this.pickNextPlayerTimeout) {
+	        clearTimeout(this.pickNextPlayerTimeout);
+	        this.pickNextPlayerTimeout = null;
+	      }
+	
+	      this.trigger('status', 'Game Reset!');
+	      this.trigger('resetGame');
+	    }
+	  }, {
 	    key: 'setCards',
 	    value: function setCards(cards) {
 	      var _this2 = this;
@@ -356,7 +393,7 @@
 	          found: card.found
 	        });
 	      });
-	      this.trigger('setCards');
+	      this.trigger('setCards', cards);
 	    }
 	  }, {
 	    key: 'updateCard',
@@ -476,15 +513,13 @@
 	          return;
 	        } else {
 	          //wait a bit before we set next player
-	          this.trigger('wait', 'Waiting 3 seconds so everyone have time to see the cards!');
-	          setTimeout(function () {
-	            if (_this4.players.length > 0) {
-	              var _index = _this4.players.indexOf(player) + 1;
-	              var nextPlayer = _this4.players[_index % _this4.players.length];
-	              _this4.nextTurn(nextPlayer.guid);
-	            } else {
-	              _this4.started = false;
-	            }
+	          if (this.nextTurnInterval) {
+	            clearInterval(this.nextTurnInterval);
+	            this.nextTurnInterval = null;
+	          }
+	          this.trigger('status', 'Checkout the cards and remember them!');
+	          this.pickNextPlayerTimeout = setTimeout(function () {
+	            return _this4.pickNextPlayer();
 	          }, 3000);
 	        }
 	      }
@@ -510,7 +545,6 @@
 	      this.players.splice(playerIndex, 1);
 	
 	      if (player && this.currentTurn === player.guid) {
-	        console.log('New turn player index', playerIndex, this.players.length, (parseInt(playerIndex) + 1) % this.players.length);
 	        if (this.players.length > 0) {
 	          var nextGuid = this.players[(playerIndex + 1) % this.players.length].guid;
 	          this.nextTurn(nextGuid);
@@ -532,10 +566,51 @@
 	      });
 	    }
 	  }, {
+	    key: 'pickNextPlayer',
+	    value: function pickNextPlayer() {
+	      var player = this.getPlayer(this.currentTurn);
+	      if (this.players.length > 0) {
+	        var index = this.players.indexOf(player) + 1;
+	        var nextPlayer = this.players[index % this.players.length];
+	        this.nextTurn(nextPlayer.guid);
+	      } else {
+	        this.started = false;
+	      }
+	    }
+	  }, {
+	    key: 'nextTurnTimeout',
+	    value: function nextTurnTimeout() {
+	      var _this5 = this;
+	
+	      if (!this.started) {
+	        //should not do anything if theres no game going on!
+	        return;
+	      }
+	
+	      this.nextTurnSecondsLeft = this.nextTurnSecondsLeft || Date.now() + 1000 * 30;
+	
+	      if (this.nextTurnInterval) {
+	        console.log('This interval should not exist!!!');
+	        clearInterval(this.nextTurnInterval);
+	        this.nextTurnInterval = null;
+	      }
+	
+	      this.nextTurnInterval = setInterval(function () {
+	
+	        var secondsLeft = (_this5.nextTurnSecondsLeft - Date.now()) / 1000;
+	
+	        _this5.trigger('status', 'Player got ' + Math.round(secondsLeft * 10) / 10 + ' seconds to pick 2 cards!');
+	        if (secondsLeft <= 0) {
+	          clearInterval(_this5.nextTurnInterval);
+	          _this5.nextTurnInterval = null;
+	          _this5.pickNextPlayer();
+	        }
+	      }, 100 * 1);
+	    }
+	  }, {
 	    key: 'nextTurn',
 	    value: function nextTurn(guid) {
 	      //unflip cards whos pair are not found yet
-	      console.log('New TURN', this.firstCard, this.secondCard);
 	      if (this.firstCard !== null && !this.getCard(this.firstCard).found) {
 	        this.updateCard({
 	          index: this.firstCard,
@@ -552,14 +627,17 @@
 	
 	      this.firstCard = null;
 	      this.secondCard = null;
-	      console.log('Next Turn', guid);
 	      this.currentTurn = guid;
 	      this.trigger('nextTurn', guid);
+	      this.nextTurnSecondsLeft = Date.now() + 1000 * 30;
+	      this.nextTurnTimeout();
 	    }
 	  }, {
 	    key: 'getState',
 	    value: function getState() {
 	      return {
+	        started: this.started,
+	        nextTurnSecondsLeft: this.nextTurnSecondsLeft,
 	        firstCard: this.firstCard,
 	        secondCard: this.secondCard,
 	        currentTurn: this.currentTurn,
@@ -580,6 +658,8 @@
 	  }, {
 	    key: 'setState',
 	    value: function setState(state) {
+	      this.started = state.started;
+	      this.nextTurnSecondsLeft = state.nextTurnSecondsLeft;
 	      this.firstCard = state.firstCard;
 	      this.secondCard = state.secondCard;
 	      this.currentTurn = state.currentTurn;
@@ -591,7 +671,7 @@
 	      this.cards = state.cards.map(function (card) {
 	        return card;
 	      });
-	
+	      this.nextTurnTimeout();
 	      this.trigger('setState', state);
 	    }
 	  }]);
@@ -654,7 +734,7 @@
 /* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__.p + "54d8b1839b94c790c33698346d57bff9.json";
+	module.exports = __webpack_require__.p + "77c11d6bae0ca6044bd397efcee9d0f5.json";
 
 /***/ },
 /* 10 */
