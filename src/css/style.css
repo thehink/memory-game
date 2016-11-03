@@ -67,8 +67,8 @@ footer {
 }
 
 .game.my-turn > .card.found:hover{
-  background: #DDD;
   cursor: default;
+  background: #EEE;
 }
 
 .card > div{
@@ -85,6 +85,10 @@ footer {
 
 .card > .back{
   background-color: #CCC;
+}
+
+.card.found > .back{
+  background-color: rgba(0,255,0,.2);
 }
 
 .front {
