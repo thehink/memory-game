@@ -38,5 +38,17 @@
   {
     "name": "stop",
     "src": "images/stop.png"
+  },
+  {
+    "name": "banana_for_scale",
+    "src": "images/banana_for_scale.png"
+  },
+  {
+    "name": "banana",
+    "src": "images/banana.png"
+  },
+  {
+    "name": "cherry",
+    "src": "images/cherry.png"
   }
 ]
