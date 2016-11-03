@@ -1,6 +1,6 @@
 'use strict';
 
-import App from './js/app';
+import App from './client/app';
 
 App.render();
 
