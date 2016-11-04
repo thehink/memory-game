@@ -13,6 +13,11 @@ class Game extends EventEmitter{
   }
 
   newGame() {
+    if(this.players.length < 1){
+      this.trigger('error', 'You need at least 1 player to start a game!');
+      return;
+    }
+
     this.resetGame();
     this.started = true;
     this.trigger('newGame');
