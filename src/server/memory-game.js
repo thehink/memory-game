@@ -89,7 +89,7 @@ const memoryGame = (io) => {
   });
 
   io.on('connection', function(socket){
-    console.log('a user connected');
+    console.log('Got a new connection!');
     socket.emit('status', 'Connected!');
 
     socket.on('flipCard', index => {
@@ -113,18 +113,29 @@ const memoryGame = (io) => {
       game.resetGame();
     });
 
-    socket.on('disconnect', () => {
-      if(socket.player){
-        const guid = socket.player.guid;
-        socket.player.timeout = setTimeout(() => {
-          //delete a player after being disconnected for 10 seconds
-          console.log('10 seconds have passed so we will remove player!');
-          game.removePlayer(guid);
-        }, 1000*10);
+    socket.on('leave', () => {
+      if(!socket.player){
+        return;
       }
+      const guid = socket.player.guid;
+      socket.player = null;
+      game.removePlayer(guid);
     })
 
-    socket.on('auth', (player) => {
+    socket.on('disconnect', () => {
+      if(!socket.player){
+        return;
+      }
+
+      const guid = socket.player.guid;
+      socket.player.timeout = setTimeout(() => {
+        //delete a player after being disconnected for 10 seconds
+        console.log('10 seconds have passed so we will remove player!');
+        game.removePlayer(guid);
+      }, 1000*5);
+    })
+
+    socket.on('join', (player) => {
       if(!player){
         return socket.emit('game_error', 'You need to send some player data!');
       }
@@ -154,10 +165,11 @@ const memoryGame = (io) => {
       socket.player = player;
       player.socket = socket;
 
-      socket.emit('authSuccess', player.getInfo());
-      socket.emit('gameState', game.getState());
+      socket.emit('joinGame', player.getInfo());
       console.log('Auth', name, guid);
     });
+
+    socket.emit('gameState', game.getState());
 
   });
 

@@ -6,6 +6,7 @@ import socket from 'socket.io-client/socket.io';
 
 
 import Game from '../shared/game';
+import Modal from './modal';
 
 const WebBrowser = (() => {
   var ua= navigator.userAgent, tem,
@@ -32,20 +33,17 @@ class App {
     this.game = game;
     this.socket = socket();
 
+    this.socket.on('disconnect', () => this.onDisconnect());
+
     this.socket.on('connect', () => {
       console.log('Connected');
-
-      //todo: A form input to pass the username
-      this.socket.emit('auth', {
-        name: WebBrowser,
-        guid: localStorage.getItem('guid')
-      });
 
       //Listen to server events
       this.socket.on('status', status => this.setStatus(status));
       this.socket.on('error', error => this.onError(error));
       //this.socket.on('game_error', error => {this.onGameError(error)});
-      this.socket.on('authSuccess', player => this.onAuthorized(player));
+      this.socket.on('joinGame', player => this.onJoinGame(player));
+      //this.socket.on('leaveGame', player => this.onLeaveGame(player));
 
       this.socket.on('addPlayer', player => this.game.addPlayer(player));
       this.socket.on('removePlayer', player => this.game.removePlayer(player));
@@ -77,7 +75,19 @@ class App {
     game.on('setCards', cards => this.onSetCards(cards));
     game.on('setState', state => this.onSetState(state));
 
+    if(localStorage.getItem('guid')){
+      this.tryJoinGame(localStorage.getItem('name'));
+    }
+
+
+    //document.body.addEventListener('mousemove', event => this.onMouseMovement(event));
     this.addControlButtonListeners();
+  }
+
+  onMouseMovement(event){
+    const pointer = document.getElementById('pointer');
+    pointer.style.left = event.clientX + 'px';
+    pointer.style.top = event.clientY + 'px';
   }
 
   addControlButtonListeners(){
@@ -90,12 +100,76 @@ class App {
       console.log('Sending Reset Game request!');
       this.socket.emit('requestResetGame');
     });
+
+    document.querySelector('#join_button').addEventListener('click', e => {
+      if(this.player){
+        this.tryLeaveGame();
+      }else{
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = localStorage.getItem('name') || '';
+
+        const modalForm = new Modal('Enter Username', input);
+
+        input.focus();
+
+        modalForm.addButton('Join', 'green',  () => {
+          this.tryJoinGame(input.value);
+          return true;
+        });
+        modalForm.addButton('Cancel', 'red', () => true);
+      }
+    });
+  }
+
+  tryLeaveGame(){
+    this.socket.emit('leave');
+  }
+
+  tryJoinGame(name){
+    this.socket.emit('join', {
+      name: name,
+      guid: localStorage.getItem('guid')
+    });
+  }
+
+  onLeaveGame(){
+    this.player = null;
+    localStorage.removeItem('guid');
+    document.querySelector('#join_button').innerText = 'Join Game';
+  }
+
+  onJoinGame(player){
+    document.querySelector('#join_button').innerText = 'Leave Game';
+    this.player = player;
+    localStorage.setItem('guid', player.guid);
+    localStorage.setItem('name', player.name);
+  }
+
+
+  onDisconnect(){
+    this.player = null;
+    this.setStatus('Disconnected!');
   }
 
   onGameFinished(guid){
     //todo: show a leaderboard with all the players
-    const player = this.game.getPlayer(guid);
-    alert('Player ' + player.name + ' won with ' + player.pairs + ' pairs');
+
+    const listEl = document.createElement('ul');
+    listEl.className = 'scoreboard';
+
+    const sortedByPairs = this.game.players.concat().sort((a, b) => {
+      return a.pairs < b.pairs;
+    });
+
+    sortedByPairs.forEach(player => {
+      const itemEl = document.createElement('li');
+      itemEl.innerText = `${player.name} with ${player.pairs} pairs!`;
+      listEl.appendChild(itemEl);
+    });
+
+    let modalForm = new Modal('Scoreboard', listEl);
+    modalForm.addButton('Ok', 'green', () => true);
   }
 
   onNewGame() {
@@ -124,7 +198,7 @@ class App {
 
   onCardClicked(cardElement, index){
     const card = this.game.getCard(index);
-    if(this.game.currentTurn === this.player.guid && !card.flipped){
+    if(this.player && this.game.currentTurn === this.player.guid && !card.flipped){
       //console.log('PickedCard', this.game, card);
       if(this.game.firstCard !== null){
         document.querySelector('.game').classList.remove('my-turn');
@@ -146,11 +220,6 @@ class App {
     //this.renderBoard(this.game.getState()); //rerender whole board. Should just toggle classes in the future
   }
 
-  onAuthorized(player){
-    this.player = player;
-    localStorage.setItem('guid', player.guid);
-  }
-
   onNextTurn(guid) {
     const playerEl = document.querySelector('.current');
     if(playerEl){
@@ -159,7 +228,7 @@ class App {
 
     document.querySelector('#player_'+guid).classList.add('current');
 
-    if(this.player.guid === guid){
+    if(this.player && this.player.guid === guid){
       document.querySelector('.game').classList.add('my-turn'); //my turn
     }else{
       document.querySelector('.game').classList.remove('my-turn');  //someone elses turn
@@ -169,7 +238,9 @@ class App {
     for (let cardEl of cardEls) {
       cardEl.classList.remove('flipped');
       //reset background image to prevent cheating by inspecting html source
-      cardEl.querySelector('.back').style.backgroundImage = '';
+      if(cardEl.className.indexOf('found') === -1){
+        cardEl.querySelector('.back').style.backgroundImage = '';
+      }
     }
 
     //todo: remove this and modify html instead of rerender everything
@@ -202,8 +273,15 @@ class App {
   }
 
   onRemovePlayer(guid) {
+    if(this.player && this.player.guid === guid){
+        this.onLeaveGame();
+    }
+
     //add player from gui
-     document.querySelector('#player_'+guid).remove();
+     const playerEl = document.querySelector('#player_'+guid);
+     if(playerEl){
+       playerEl.remove();
+     }
   }
 
   onAddPlayer(player) {
