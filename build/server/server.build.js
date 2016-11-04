@@ -204,7 +204,7 @@
 	  });
 	
 	  io.on('connection', function (socket) {
-	    console.log('a user connected');
+	    console.log('Got a new connection!');
 	    socket.emit('status', 'Connected!');
 	
 	    socket.on('flipCard', function (index) {
@@ -228,20 +228,29 @@
 	      game.resetGame();
 	    });
 	
-	    socket.on('disconnect', function () {
-	      if (socket.player) {
-	        (function () {
-	          var guid = socket.player.guid;
-	          socket.player.timeout = setTimeout(function () {
-	            //delete a player after being disconnected for 10 seconds
-	            console.log('10 seconds have passed so we will remove player!');
-	            game.removePlayer(guid);
-	          }, 1000 * 10);
-	        })();
+	    socket.on('leave', function () {
+	      if (!socket.player) {
+	        return;
 	      }
+	      var guid = socket.player.guid;
+	      socket.player = null;
+	      game.removePlayer(guid);
 	    });
 	
-	    socket.on('auth', function (player) {
+	    socket.on('disconnect', function () {
+	      if (!socket.player) {
+	        return;
+	      }
+	
+	      var guid = socket.player.guid;
+	      socket.player.timeout = setTimeout(function () {
+	        //delete a player after being disconnected for 10 seconds
+	        console.log('10 seconds have passed so we will remove player!');
+	        game.removePlayer(guid);
+	      }, 1000 * 5);
+	    });
+	
+	    socket.on('join', function (player) {
 	      if (!player) {
 	        return socket.emit('game_error', 'You need to send some player data!');
 	      }
@@ -271,10 +280,11 @@
 	      socket.player = player;
 	      player.socket = socket;
 	
-	      socket.emit('authSuccess', player.getInfo());
-	      socket.emit('gameState', game.getState());
+	      socket.emit('joinGame', player.getInfo());
 	      console.log('Auth', name, guid);
 	    });
+	
+	    socket.emit('gameState', game.getState());
 	  });
 	
 	  //will loop until conditions for game is right and is started
@@ -343,6 +353,11 @@
 	  _createClass(Game, [{
 	    key: 'newGame',
 	    value: function newGame() {
+	      if (this.players.length < 1) {
+	        this.trigger('error', 'You need at least 1 player to start a game!');
+	        return;
+	      }
+	
 	      this.resetGame();
 	      this.started = true;
 	      this.trigger('newGame');
@@ -364,11 +379,7 @@
 	      this.firstCard = null;
 	      this.secondCard = null;
 	
-	      if (this.nextTurnInterval) {
-	        console.log('Removing interval!');
-	        clearInterval(this.nextTurnInterval);
-	        this.nextTurnInterval = null;
-	      }
+	      this.stopTurnTimeoutInterval();
 	
 	      if (this.pickNextPlayerTimeout) {
 	        clearTimeout(this.pickNextPlayerTimeout);
@@ -503,7 +514,9 @@
 	          this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
 	
 	          if (this.getPairsLeft() === 0) {
+	            this.stopTurnTimeoutInterval();
 	            this.started = false;
+	            this.trigger('status', 'Game completed!');
 	            this.trigger('gameFinished', this.getLeadingPlayerGuid());
 	          }
 	
@@ -513,10 +526,7 @@
 	          return;
 	        } else {
 	          //wait a bit before we set next player
-	          if (this.nextTurnInterval) {
-	            clearInterval(this.nextTurnInterval);
-	            this.nextTurnInterval = null;
-	          }
+	          this.stopTurnTimeoutInterval();
 	          this.trigger('status', 'Checkout the cards and remember them!');
 	          this.pickNextPlayerTimeout = setTimeout(function () {
 	            return _this4.pickNextPlayer();
@@ -578,6 +588,17 @@
 	      }
 	    }
 	  }, {
+	    key: 'stopTurnTimeoutInterval',
+	    value: function stopTurnTimeoutInterval() {
+	      if (this.nextTurnInterval) {
+	        clearInterval(this.nextTurnInterval);
+	        this.nextTurnInterval = null;
+	      }
+	    }
+	
+	    //todo: make this a timeout and create the timer on client instead
+	
+	  }, {
 	    key: 'nextTurnTimeout',
 	    value: function nextTurnTimeout() {
 	      var _this5 = this;
@@ -591,8 +612,7 @@
 	
 	      if (this.nextTurnInterval) {
 	        console.log('This interval should not exist!!!');
-	        clearInterval(this.nextTurnInterval);
-	        this.nextTurnInterval = null;
+	        this.stopTurnTimeoutInterval();
 	      }
 	
 	      this.nextTurnInterval = setInterval(function () {
