@@ -140,7 +140,13 @@ const memoryGame = (io) => {
         return socket.emit('game_error', 'You need to send some player data!');
       }
 
-      const name = player.name;
+      const name = player.name.replace(/[^A-z0-9åäö]/gim, '');
+      player.name = name;
+
+      if(name.length === 0){
+        return socket.emit('game_error', 'Name too short!');
+      }
+
       const guid = player.guid;
 
       if(player.guid){

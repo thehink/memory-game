@@ -28,6 +28,7 @@ class App {
       //Listen to server events
       this.socket.on('status', status => this.setStatus(status));
       this.socket.on('error', error => this.onError(error));
+      this.socket.on('game_error', error => this.onError(error));
       //this.socket.on('game_error', error => {this.onGameError(error)});
       this.socket.on('joinGame', player => this.onJoinGame(player));
       //this.socket.on('leaveGame', player => this.onLeaveGame(player));
@@ -126,6 +127,7 @@ class App {
   }
 
   onJoinGame(player){
+    this.setStatus('Joined Game!');
     document.querySelector('#join_button').innerText = 'Leave Game';
     this.player = player;
     localStorage.setItem('guid', player.guid);
@@ -180,7 +182,7 @@ class App {
 
   onError(error){
     console.log('Socket_ERROR', error);
-    this.setStatus(error);
+    this.setStatus('Error: ' + error);
   }
 
   onGameError(error){
