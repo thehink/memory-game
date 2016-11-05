@@ -253,7 +253,7 @@ class Game extends EventEmitter{
       return;
     }
 
-    this.nextTurnSecondsLeft = this.nextTurnSecondsLeft || Date.now() + 1000*30;
+    this.nextTurnSecondsLeft = this.nextTurnSecondsLeft || Date.now() + 1000*20;
 
     if(this.nextTurnInterval){
       console.log('This interval should not exist!!!');
@@ -295,7 +295,7 @@ class Game extends EventEmitter{
     this.secondCard = null;
     this.currentTurn = guid;
     this.trigger('nextTurn', guid);
-    this.nextTurnSecondsLeft = Date.now() + 1000*30;
+    this.nextTurnSecondsLeft = Date.now() + 1000*20;
     this.nextTurnTimeout();
   }
 
