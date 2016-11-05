@@ -7,26 +7,13 @@ import socket from 'socket.io-client/socket.io';
 
 import Game from '../shared/game';
 import Modal from './modal';
-
-const WebBrowser = (() => {
-  var ua= navigator.userAgent, tem,
-  M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
-  if(/trident/i.test(M[1])){
-      tem=  /\brv[ :]+(\d+)/g.exec(ua) || [];
-      return 'IE '+(tem[1] || '');
-  }
-  if(M[1]=== 'Chrome'){
-      tem= ua.match(/\b(OPR|Edge)\/(\d+)/);
-      if(tem!= null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
-  }
-  M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
-  if((tem= ua.match(/version\/(\d+)/i))!= null) M.splice(1, 1, tem[1]);
-  return M.join(' ');
-})();
+import Board from './board';
+//import Players from './players';  todo: move out players gui stuff out of this file
 
 class App {
   constructor() {
-    //this.game = new Game(state);
+    this.board = new Board(document.querySelector('.game'));
+    this.board.on('cardClicked', index => this.onCardClicked(index));
 
     this.player;
     const game = new Game();
@@ -78,7 +65,6 @@ class App {
     if(localStorage.getItem('guid')){
       this.tryJoinGame(localStorage.getItem('name'));
     }
-
 
     //document.body.addEventListener('mousemove', event => this.onMouseMovement(event));
     this.addControlButtonListeners();
@@ -202,7 +188,7 @@ class App {
     //this.setStatus(error);
   }
 
-  onCardClicked(cardElement, index){
+  onCardClicked(index){
     const card = this.game.getCard(index);
     if(this.player && this.game.currentTurn === this.player.guid && !card.flipped){
       //console.log('PickedCard', this.game, card);
@@ -214,16 +200,9 @@ class App {
   }
 
   onFlipCard(guid, index){
-    //get card by id && and flip card
-    //cardElement.classList.add('flipped');
     const card = this.game.getCard(index);
+    this.board.updateCard(card);
     console.log('OnFlipCard', index);
-    const cardEl = document.querySelector('.game > .card:nth-child(' + (index+1) + ')');
-    cardEl.classList.add('flipped');
-
-    cardEl.querySelector('.back').style.backgroundImage = 'url(' + card.src + ')';
-
-    //this.renderBoard(this.game.getState()); //rerender whole board. Should just toggle classes in the future
   }
 
   onNextTurn(guid) {
@@ -240,17 +219,7 @@ class App {
       document.querySelector('.game').classList.remove('my-turn');  //someone elses turn
     }
 
-    const cardEls = document.querySelectorAll('.flipped');
-    for (let cardEl of cardEls) {
-      cardEl.classList.remove('flipped');
-      //reset background image to prevent cheating by inspecting html source
-      if(cardEl.className.indexOf('found') === -1){
-        cardEl.querySelector('.back').style.backgroundImage = '';
-      }
-    }
-
-    //todo: remove this and modify html instead of rerender everything
-    //this.renderBoard(this.game.getState());
+    this.board.updateCards(this.game.getState().cards);
   }
 
   onSetState(state){
@@ -260,13 +229,12 @@ class App {
 
   onSetCards(){
     const state = this.game.getState();
-    this.renderBoard(state);
+    this.board.render(state);
   }
 
   onFoundPair(guid, cards){
     cards.forEach(index => {
-      const cardEl = document.querySelector('.game > .card:nth-child(' + (index+1) + ')');
-      cardEl.classList.add('found');
+      this.board.updateCard(this.game.getCard(index));
     });
 
     const player = this.game.getPlayer(guid);
@@ -339,54 +307,10 @@ class App {
     });
   }
 
-  renderBoard(state) {
-    const selector = document.querySelector('.game');
-    selector.innerHTML = '';
-
-    if(this.player && state.currentTurn === this.player.guid){
-      selector.classList.add('my-turn');
-    }else{
-      selector.classList.remove('my-turn');
-    }
-
-    state.cards.forEach(card => {
-      let cardElement = document.createElement('div');
-      cardElement.className = 'card';
-
-      if(card.flipped){
-        cardElement.classList.add('flipped');
-      }
-
-      if(card.found){
-        cardElement.classList.add('found');
-      }
-
-      let front = document.createElement('div');
-      front.className = 'front';
-      front.style.backgroundImage = 'url(' + Image + ')';
-
-      let back = document.createElement('div');
-      back.className = 'back';
-
-      if(card.flipped && card.name){
-        back.style.backgroundImage = 'url(' + card.src + ')';
-      }
-
-      cardElement.appendChild(front);
-      cardElement.appendChild(back);
-
-      cardElement.addEventListener('click', (event) => {
-        this.onCardClicked(cardElement, card.index);
-      });
-
-      selector.appendChild(cardElement);
-    });
-  }
-
   render() {
     const state = this.game.getState();
 
-    this.renderBoard(state);
+    this.board.render(state);
     this.renderPlayers(state);
   }
 }
