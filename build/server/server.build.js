@@ -68,7 +68,7 @@
 	    res.sendfile('./build/client/index.html');
 	});
 	
-	server.listen(8080);
+	server.listen(8080, "localhost");
 
 /***/ },
 /* 2 */
