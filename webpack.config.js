@@ -171,7 +171,7 @@ if(env === 'dist'){
       noInfo: false
     },
     cache: false,
-    devtool: 'sourcemap',
+    devtool: false,
     plugins: [
       new webpack.optimize.DedupePlugin(),
       new webpack.DefinePlugin({
