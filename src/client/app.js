@@ -144,6 +144,12 @@ class App {
     this.player = player;
     localStorage.setItem('guid', player.guid);
     localStorage.setItem('name', player.name);
+
+    if(this.player && this.player.guid === this.game.currentTurn){
+      document.querySelector('.game').classList.add('my-turn'); //my turn
+    }else{
+      document.querySelector('.game').classList.remove('my-turn');  //someone elses turn
+    }
   }
 
 
