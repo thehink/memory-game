@@ -1,4 +1,4 @@
-import EventEmitter from 'es6-event-emitter';
+import EventEmitter from './eventEmitter';
 import Player from './player';
 
 class Game extends EventEmitter{
@@ -167,9 +167,8 @@ class Game extends EventEmitter{
       player.pairs++;
 
       this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
-
+      this.stopTurnTimeoutInterval();
       if(this.getPairsLeft() === 0){
-        this.stopTurnTimeoutInterval();
         this.started = false;
         this.trigger('status', 'Game completed!');
         this.trigger('gameFinished', this.getLeadingPlayerGuid());
