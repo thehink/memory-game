@@ -86,7 +86,7 @@ class Game extends EventEmitter{
       if(card.found){
         pairsLeft--;
       }
-    })
+    });
     pairsLeft /= 2;
     return pairsLeft;
   }
@@ -142,41 +142,57 @@ class Game extends EventEmitter{
 
     console.log('FlipCard', this.firstCard, this.secondCard);
 
-    if(this.firstCard !== null && this.secondCard !== null){
-      const firstCard = this.getCard(this.firstCard),
-            secondCard = this.getCard(this.secondCard);
+    this.trigger('flipCard', player.guid, index);
+    this.compareCards();
+  }
 
-      if(firstCard.name && firstCard.name === secondCard.name){
-        //player scored
-        firstCard.found = true;
-        secondCard.found = true;
-
-        console.log('FOUND PAIR', this.firstCard, this.secondCard);
-
-        player.pairs++;
-
-        this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
-
-        if(this.getPairsLeft() === 0){
-          this.stopTurnTimeoutInterval();
-          this.started = false;
-          this.trigger('status', 'Game completed!');
-          this.trigger('gameFinished', this.getLeadingPlayerGuid());
-        }
-
-        //same player can pick cards again
-        this.trigger('flipCard', player.guid, index);
-        this.nextTurn(this.currentTurn);
-        return;
-      }else{
-        //wait a bit before we set next player
-        this.stopTurnTimeoutInterval();
-        this.trigger('status', 'Checkout the cards and remember them!');
-        this.pickNextPlayerTimeout = setTimeout(() => this.pickNextPlayer(), 3000);
-      }
+  compareCards(){
+    if(this.firstCard === null || this.secondCard === null){
+      //this.trigger('error', 'You need to have picked 2 cards to be able to compare them!');
+      return;
     }
 
-    this.trigger('flipCard', player.guid, index);
+    const player = this.getPlayer(this.currentTurn);
+
+    const firstCard = this.getCard(this.firstCard),
+          secondCard = this.getCard(this.secondCard);
+
+    if(firstCard.name && firstCard.name === secondCard.name){
+      //player scored
+      firstCard.found = true;
+      secondCard.found = true;
+
+      console.log('FOUND PAIR', this.firstCard, this.secondCard);
+
+      player.pairs++;
+
+      this.trigger('foundPair', player.guid, [this.firstCard, this.secondCard]);
+
+      if(this.getPairsLeft() === 0){
+        this.stopTurnTimeoutInterval();
+        this.started = false;
+        this.trigger('status', 'Game completed!');
+        this.trigger('gameFinished', this.getLeadingPlayerGuid());
+      }
+
+      //same player can pick cards again
+      //this.trigger('flipCard', player.guid, index);
+      this.nextTurn(this.currentTurn);
+      return;
+    }else{
+      //wait a bit before we set next player
+      this.stopTurnTimeoutInterval();
+      this.trigger('status', 'Checkout the cards and remember them!');
+
+      if(!this.compareCardsTimestamp){
+        this.compareCardsTimestamp = Date.now() + 1000*3;
+      }
+
+      let timeleft = this.compareCardsTimestamp - Date.now();
+      console.log(timeleft);
+
+      this.pickNextPlayerTimeout = setTimeout(() => this.pickNextPlayer(), timeleft);
+    }
   }
 
   addPlayer(player) {
@@ -275,7 +291,7 @@ class Game extends EventEmitter{
         flipped: false
       });
     }
-
+    this.compareCardsTimestamp = null;
     this.firstCard = null;
     this.secondCard = null;
     this.currentTurn = guid;
@@ -289,6 +305,7 @@ class Game extends EventEmitter{
     return {
       started: this.started,
       nextTurnSecondsLeft: this.nextTurnSecondsLeft,
+      compareCardsTimestamp: this.compareCardsTimestamp,
       firstCard: this.firstCard,
       secondCard: this.secondCard,
       currentTurn: this.currentTurn,
@@ -308,8 +325,8 @@ class Game extends EventEmitter{
   setState(state) {
     this.started = state.started;
     this.nextTurnSecondsLeft = state.nextTurnSecondsLeft;
-    this.firstCard = state.firstCard;
-    this.secondCard = state.secondCard;
+    this.compareCardsTimestamp = state.compareCardsTimestamp;
+
     this.currentTurn = state.currentTurn;
 
     this.players = state.players.map(player => {
@@ -319,6 +336,11 @@ class Game extends EventEmitter{
     this.cards = state.cards.map(card => {
       return card;
     });
+
+    this.firstCard = state.firstCard;
+    this.secondCard = state.secondCard;
+
+    this.compareCards();
     this.nextTurnTimeout();
     this.trigger('setState', state);
   }
