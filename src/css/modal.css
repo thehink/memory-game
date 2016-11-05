@@ -24,6 +24,7 @@
 @media all and (max-width:  600px) {
   .modal-wrapper > .modal{
     width: 95%;
+    min-width: auto;
   }
 }
 
