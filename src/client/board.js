@@ -58,9 +58,15 @@ class Board extends EventEmitter{
     return cardElement;
   }
 
-  render(state) {
+  render(state, player) {
     this.cardsEl = [];
     this.el.innerHTML = '';
+
+    if(player && player.guid === state.currentTurn){
+      this.el.classList.add('my-turn'); //my turn
+    }else if(player){
+      this.el.classList.remove('my-turn');  //someone elses turn
+    }
 
     state.cards.forEach((card, i) => {
       this.cardsEl[i] = this.renderCard(card);
