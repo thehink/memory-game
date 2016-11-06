@@ -231,7 +231,7 @@ class App {
 
   onSetCards(){
     const state = this.game.getState();
-    this.board.render(state);
+    this.board.render(state, this.player);
   }
 
   onFoundPair(guid, cards){
@@ -312,7 +312,7 @@ class App {
   render() {
     const state = this.game.getState();
 
-    this.board.render(state);
+    this.board.render(state, this.player);
     this.renderPlayers(state);
   }
 }

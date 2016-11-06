@@ -62,8 +62,8 @@ const memoryGame = (io) => {
   game.on('addPlayer', player => io.emit('addPlayer', player));
   game.on('removePlayer', guid => io.emit('removePlayer', guid));
   game.on('updatePlayer', player => io.emit('updatePlayer', player));
-  game.on('newGame', () => io.emit('newGame'));
-  game.on('resetGame', () => io.emit('resetGame'));
+  //game.on('newGame', () => io.emit('newGame'));
+  //game.on('resetGame', () => io.emit('resetGame'));
   game.on('setCards', () => io.emit('setCards', game.getState().cards));
   game.on('flipCard', (guid, index) => {
     const card = game.getCard(index);
@@ -104,13 +104,25 @@ const memoryGame = (io) => {
 
     socket.on('requestNewGame', (cardsSearchString) => {
       console.log('Got New Game request');
+
+      game.players.sort((a,b) => {
+        return 0.5 - Math.random();
+      });
+
       game.setCards(getRandomCards());
       game.newGame();
+      socket.emit('gameState', game.getState());
     });
 
     socket.on('requestResetGame', () => {
       console.log('Got Reset Game request');
+
+      game.players.sort((a,b) => {
+        return 0.5 - Math.random();
+      });
+
       game.resetGame();
+      socket.emit('gameState', game.getState());
     });
 
     socket.on('leave', () => {
