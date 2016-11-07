@@ -111,7 +111,7 @@ const memoryGame = (io) => {
 
       game.setCards(getRandomCards());
       game.newGame();
-      socket.emit('gameState', game.getState());
+      io.emit('gameState', game.getState());
     });
 
     socket.on('requestResetGame', () => {
@@ -122,7 +122,7 @@ const memoryGame = (io) => {
       });
 
       game.resetGame();
-      socket.emit('gameState', game.getState());
+      io.emit('gameState', game.getState());
     });
 
     socket.on('leave', () => {
