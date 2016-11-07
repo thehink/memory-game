@@ -29,13 +29,13 @@
 }
 
 .board.my-turn > .card:hover{
-  background: #DDD;
+  background-color: #DDD;
   cursor: pointer;
 }
 
-.board.my-turn > .card.found:hover{
+.board.my-turn > .card.found:hover, .board.my-turn > .card.flipped:hover{
   cursor: default;
-  background: #EEE;
+  background-color: rgba(0,0,0,0);
 }
 
 .card > div{
