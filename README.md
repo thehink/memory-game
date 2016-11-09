@@ -7,12 +7,12 @@ A simple Memory game with multiplayer support via websockets
 - `cd memory-game`
 - `npm install`
 - `npm start`
-- `browse http://localhost:4000`
+- Browse <http://localhost:4000>
 
 ## Production
 - `npm run build`  - Build client and server
 - `npm run server`
-- `browse http://localhost:8080`
+- browse <http://localhost:8080>
 
 ### Build
 - `npm run build:client`  - only client
